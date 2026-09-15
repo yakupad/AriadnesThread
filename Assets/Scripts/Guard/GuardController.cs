@@ -34,6 +34,13 @@ namespace AriadnesThread.Guard
             _patrolIndex = 0;
             _currentCell = _patrolLoop[0];
             transform.position = MazeView.CellToWorld(_currentCell, cellSize) + Vector3.up;
+
+            var coneGO = new GameObject("VisionCone");
+            coneGO.transform.SetParent(transform);
+            // Rendered shorter than the real detection range (visionRangeCells, used unchanged
+            // in TryGetLineOfSightToPlayer) — the full range is a large fraction of the whole
+            // maze and an opaque cone that big would dominate the screen.
+            coneGO.AddComponent<GuardVisionCone>().Build(visionRangeCells * cellSize * 0.6f, visionAngleDegrees);
         }
 
         /// <summary>Range/angle/occlusion check against the player. <paramref name="distance"/> is

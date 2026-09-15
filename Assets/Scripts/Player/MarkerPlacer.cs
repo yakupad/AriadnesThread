@@ -1,3 +1,4 @@
+using AriadnesThread.Audio;
 using AriadnesThread.Core.Economy;
 using AriadnesThread.Core.Generation;
 using AriadnesThread.Core.Grid;
@@ -13,6 +14,7 @@ namespace AriadnesThread.Player
     /// on device — see PlayerTorch for the same simplification.
     /// </summary>
     [RequireComponent(typeof(GridPlayerController))]
+    [RequireComponent(typeof(AudioSource))]
     public class MarkerPlacer : MonoBehaviour
     {
         [SerializeField] private int startingStock = 3;
@@ -21,6 +23,7 @@ namespace AriadnesThread.Player
 
         private MazeLevel _level;
         private GridPlayerController _controller;
+        private AudioSource _audio;
 
         public MarkerEconomy Economy { get; private set; }
 
@@ -37,6 +40,7 @@ namespace AriadnesThread.Player
         private void Awake()
         {
             _controller = GetComponent<GridPlayerController>();
+            _audio = GetComponent<AudioSource>();
         }
 
         private void Update()
@@ -50,11 +54,13 @@ namespace AriadnesThread.Player
             {
                 var suggested = SuggestColor(current);
                 var color = Keyboard.current.leftShiftKey.isPressed ? Opposite(suggested) : suggested;
-                Economy.TryPlaceOrRecolor(current, color);
+                if (Economy.TryPlaceOrRecolor(current, color))
+                    _audio.PlayOneShot(SfxLibrary.MarkerPlace, 0.6f);
             }
             else if (Keyboard.current.rKey.wasPressedThisFrame)
             {
-                Economy.TryRetrieve(current);
+                if (Economy.TryRetrieve(current))
+                    _audio.PlayOneShot(SfxLibrary.MarkerRetrieve, 0.6f);
             }
         }
 

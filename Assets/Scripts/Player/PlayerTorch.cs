@@ -1,3 +1,4 @@
+using AriadnesThread.Audio;
 using AriadnesThread.Core.Economy;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -10,6 +11,7 @@ namespace AriadnesThread.Player
     /// ever forces the torch on, including the tension state machine.
     /// </summary>
     [RequireComponent(typeof(GridPlayerController))]
+    [RequireComponent(typeof(AudioSource))]
     public class PlayerTorch : MonoBehaviour
     {
         [SerializeField] private int startingFuel = 80;
@@ -19,12 +21,14 @@ namespace AriadnesThread.Player
         [SerializeField] private float cellSize = 3f;
 
         private Light _light;
+        private AudioSource _audio;
 
         public TorchEconomy Economy { get; private set; }
 
         private void Awake()
         {
             Economy = new TorchEconomy(startingFuel, maxFuel, baseVisionRadius, litVisionRadius);
+            _audio = GetComponent<AudioSource>();
 
             var lightGO = new GameObject("TorchLight");
             lightGO.transform.SetParent(transform);
@@ -32,7 +36,7 @@ namespace AriadnesThread.Player
             _light = lightGO.AddComponent<Light>();
             _light.type = LightType.Point;
             _light.color = new Color(1f, 0.75f, 0.45f);
-            _light.intensity = 1.5f;
+            _light.intensity = 4f; // punchy against the now near-black ambient — see TensionAtmosphere
 
             GetComponent<GridPlayerController>().OnStepTaken += HandleStep;
             UpdateLightRange();
@@ -43,6 +47,7 @@ namespace AriadnesThread.Player
             if (Keyboard.current == null || !Keyboard.current.tKey.wasPressedThisFrame) return;
 
             Economy.SetLit(!Economy.IsLit);
+            _audio.PlayOneShot(Economy.IsLit ? SfxLibrary.TorchOn : SfxLibrary.TorchOff, 0.5f);
             UpdateLightRange();
         }
 

@@ -12,9 +12,11 @@ using UnityEngine.InputSystem;
 namespace AriadnesThread.Bootstrap
 {
     /// <summary>
-    /// M5 scope: Kristal/meta-progression, Game Center, and a real (if minimal) level-end
-    /// flow on top of M4's markers/echo/key-lock/timed-gate. Retry regenerates the SAME seed
-    /// with run-time resources reset — no checkpoint — per the concept doc's retry rules.
+    /// M5 scope + a visual/audio polish pass: Kristal/meta-progression, Game Center, a real
+    /// (if minimal) level-end flow, dark ambient lighting so the torch mechanic actually
+    /// matters, and TensionAtmosphere tying camera/lighting/audio to the tension state.
+    /// Retry regenerates the SAME seed with run-time resources reset — no checkpoint — per
+    /// the concept doc's retry rules.
     /// </summary>
     public class MazeBootstrap : MonoBehaviour
     {
@@ -42,6 +44,14 @@ namespace AriadnesThread.Bootstrap
             gameCenterGO.transform.SetParent(transform);
             _gameCenter = gameCenterGO.AddComponent<GameCenterManager>();
             _gameCenter.Authenticate();
+
+            // Calm baseline — TensionAtmosphere only ever lerps away from here, so start there.
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.03f, 0.03f, 0.05f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Exponential;
+            RenderSettings.fogColor = new Color(0.03f, 0.03f, 0.05f);
+            RenderSettings.fogDensity = 0.035f;
         }
 
         private void Start() => BuildLevel();
@@ -88,6 +98,7 @@ namespace AriadnesThread.Bootstrap
             _markers.Initialize(level);
             _echo = playerGO.AddComponent<EchoCaster>();
             _echo.Initialize(level);
+            playerGO.AddComponent<PlayerAudio>();
 
             var markerViewGO = new GameObject("MarkerView");
             markerViewGO.transform.SetParent(_levelRoot);
@@ -109,7 +120,8 @@ namespace AriadnesThread.Bootstrap
             lightGO.transform.SetParent(_levelRoot);
             var light = lightGO.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 0.5f;
+            light.color = new Color(0.6f, 0.65f, 0.8f); // cool moonlight — the torch's warm glow should read as contrast
+            light.intensity = 0.15f;
             lightGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
 
             var camGO = new GameObject("IsometricCamera");
@@ -117,7 +129,10 @@ namespace AriadnesThread.Bootstrap
             var cam = camGO.AddComponent<Camera>();
             cam.orthographic = true;
             cam.orthographicSize = Mathf.Max(width, height) * cellSize * 0.6f;
+            cam.clearFlags = CameraClearFlags.SolidColor; // no skybox — it ignored the dark ambient/fog tuning
+            cam.backgroundColor = new Color(0.02f, 0.02f, 0.03f);
             camGO.tag = "MainCamera";
+            camGO.AddComponent<AudioListener>();
             camGO.AddComponent<IsometricCameraFollow>().SetTarget(playerGO.transform);
 
             GuardController guard = null;
@@ -142,11 +157,18 @@ namespace AriadnesThread.Bootstrap
                 directorGO.transform.SetParent(_levelRoot);
                 _tensionDirector = directorGO.AddComponent<TensionDirector>();
                 _tensionDirector.Initialize(level, _player, guard);
+
+                var atmosphereGO = new GameObject("TensionAtmosphere");
+                atmosphereGO.transform.SetParent(_levelRoot);
+                var sfxSource = atmosphereGO.AddComponent<AudioSource>();
+                var droneSource = atmosphereGO.AddComponent<AudioSource>();
+                var atmosphere = atmosphereGO.AddComponent<TensionAtmosphere>();
+                atmosphere.Initialize(_tensionDirector, cam, sfxSource, droneSource);
             }
 
             var levelEndGO = new GameObject("LevelEndController");
             levelEndGO.transform.SetParent(_levelRoot);
-            _levelEnd = levelEndGO.AddComponent<LevelEndController>();
+            _levelEnd = levelEndGO.AddComponent<LevelEndController>(); // [RequireComponent] adds its AudioSource
             _levelEnd.Initialize(level, _player, _torch, _markers, _echo, _tensionDirector, _wallet);
         }
 

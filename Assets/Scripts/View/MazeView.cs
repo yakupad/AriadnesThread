@@ -64,8 +64,20 @@ namespace AriadnesThread.View
             floor.transform.SetParent(transform);
             floor.transform.position = CellToWorld(cell, cellSize) + new Vector3(0, -0.5f, 0);
             floor.transform.localScale = new Vector3(cellSize, 1f, cellSize);
-            Colorize(floor, FloorColor);
+
+            // Deterministic per-cell jitter so flat tiles don't read as one uniform slab.
+            float jitter = (HashNoise(cell.X, cell.Y) - 0.5f) * 0.08f;
+            var tint = new Color(FloorColor.r + jitter, FloorColor.g + jitter, FloorColor.b + jitter);
+            Colorize(floor, tint);
             FloorTiles[cell] = floor;
+        }
+
+        private static float HashNoise(int x, int y)
+        {
+            int h = x * 374761393 + y * 668265263;
+            h = (h ^ (h >> 13)) * 1274126177;
+            h ^= h >> 16;
+            return (h & 0x7fffffff) / (float)int.MaxValue;
         }
 
         private void BuildWallSegment(CellCoord cell, Direction dir, float cellSize)
@@ -113,7 +125,7 @@ namespace AriadnesThread.View
             marker.transform.SetParent(transform);
             marker.transform.position = CellToWorld(cell, cellSize) + Vector3.up * 0.05f;
             marker.transform.localScale = new Vector3(cellSize * 0.5f, 0.1f, cellSize * 0.5f);
-            Colorize(marker, color);
+            ColorizeEmissive(marker, color, 1.5f); // glows even against the dark ambient
         }
 
         /// <summary>A thin overlay straddling an open edge — visual signaling only,
@@ -138,6 +150,14 @@ namespace AriadnesThread.View
         private static void Colorize(GameObject go, Color color)
         {
             var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
+            go.GetComponent<Renderer>().material = material;
+        }
+
+        private static void ColorizeEmissive(GameObject go, Color color, float intensity)
+        {
+            var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
+            material.EnableKeyword("_EMISSION");
+            material.SetColor("_EmissionColor", color * intensity);
             go.GetComponent<Renderer>().material = material;
         }
     }

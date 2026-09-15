@@ -1,3 +1,4 @@
+using AriadnesThread.Audio;
 using AriadnesThread.Core.Generation;
 using AriadnesThread.Core.Meta;
 using AriadnesThread.Core.Tension;
@@ -13,6 +14,7 @@ namespace AriadnesThread.Bootstrap
     /// persists it, and submits the result to Game Center. Submission never blocks anything
     /// else — see GameCenterManager's fail-soft design.
     /// </summary>
+    [RequireComponent(typeof(AudioSource))]
     public class LevelEndController : MonoBehaviour
     {
         private MazeLevel _level;
@@ -23,6 +25,7 @@ namespace AriadnesThread.Bootstrap
         private TensionDirector _tensionDirector;
         private CrystalWallet _wallet;
         private LevelRewardCalculator _rewardCalculator;
+        private AudioSource _audio;
 
         public LevelOutcome Outcome { get; private set; } = LevelOutcome.InProgress;
         public int LastReward { get; private set; }
@@ -44,6 +47,7 @@ namespace AriadnesThread.Bootstrap
             _tensionDirector = tensionDirector;
             _wallet = wallet;
             _rewardCalculator = new LevelRewardCalculator();
+            _audio = GetComponent<AudioSource>();
         }
 
         private void Update()
@@ -72,6 +76,7 @@ namespace AriadnesThread.Bootstrap
             LastReward = _rewardCalculator.CalculateReward(markerFraction, torchFraction, echoFraction);
             _wallet.Add(LastReward);
             MetaProgressionStore.SaveWallet(_wallet);
+            _audio.PlayOneShot(SfxLibrary.Win);
 
             Debug.Log($"Kazandın! +{LastReward} Kristal (toplam {_wallet.Balance}). Adım: {_player.StepCount}. Space'e bas: yeni level.");
 
