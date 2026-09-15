@@ -1,6 +1,7 @@
 using AriadnesThread.Audio;
 using AriadnesThread.Core.Economy;
 using AriadnesThread.Core.Generation;
+using AriadnesThread.View;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -39,8 +40,13 @@ namespace AriadnesThread.Player
         private void Update()
         {
             if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            {
                 if (Economy.TryUse(_level.Grid, _controller.CurrentCell))
+                {
                     _audio.PlayOneShot(SfxLibrary.EchoPing, 0.6f);
+                    ParticleEffects.SpawnBurst(transform.position, new Color(0.4f, 0.85f, 0.9f), count: 40, speed: 5f, lifetime: 0.5f, size: 0.08f);
+                }
+            }
         }
     }
 }

@@ -1,5 +1,7 @@
 using AriadnesThread.Audio;
+using AriadnesThread.CameraControl;
 using AriadnesThread.Core.Tension;
+using AriadnesThread.View;
 using UnityEngine;
 
 namespace AriadnesThread.Bootstrap
@@ -16,13 +18,17 @@ namespace AriadnesThread.Bootstrap
 
         private TensionDirector _director;
         private Camera _camera;
+        private IsometricCameraFollow _cameraFollow;
+        private Transform _guardTransform;
         private float _baseOrthographicSize;
         private TensionState _previousState = TensionState.Calm;
 
-        public void Initialize(TensionDirector director, Camera camera, AudioSource sfxSource, AudioSource droneSource)
+        public void Initialize(TensionDirector director, Camera camera, Transform guardTransform, AudioSource sfxSource, AudioSource droneSource)
         {
             _director = director;
             _camera = camera;
+            _cameraFollow = camera.GetComponent<IsometricCameraFollow>();
+            _guardTransform = guardTransform;
             _baseOrthographicSize = camera.orthographicSize;
             this.sfxSource = sfxSource;
             this.droneSource = droneSource;
@@ -53,9 +59,13 @@ namespace AriadnesThread.Bootstrap
             {
                 case TensionState.Chase:
                     sfxSource.PlayOneShot(SfxLibrary.GuardSpotted);
+                    if (_guardTransform != null)
+                        ParticleEffects.SpawnBurst(_guardTransform.position + Vector3.up * 1.5f, new Color(1f, 0.85f, 0.2f), count: 15, speed: 2f, lifetime: 0.4f, size: 0.1f);
                     break;
                 case TensionState.Caught:
                     sfxSource.PlayOneShot(SfxLibrary.Caught);
+                    if (_cameraFollow != null)
+                        _cameraFollow.Shake(duration: 0.4f, magnitude: 0.6f);
                     break;
             }
         }

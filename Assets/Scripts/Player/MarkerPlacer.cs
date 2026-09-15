@@ -2,6 +2,7 @@ using AriadnesThread.Audio;
 using AriadnesThread.Core.Economy;
 using AriadnesThread.Core.Generation;
 using AriadnesThread.Core.Grid;
+using AriadnesThread.View;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -55,7 +56,11 @@ namespace AriadnesThread.Player
                 var suggested = SuggestColor(current);
                 var color = Keyboard.current.leftShiftKey.isPressed ? Opposite(suggested) : suggested;
                 if (Economy.TryPlaceOrRecolor(current, color))
+                {
                     _audio.PlayOneShot(SfxLibrary.MarkerPlace, 0.6f);
+                    var burstColor = color == MarkerColor.Red ? new Color(0.8f, 0.2f, 0.2f) : new Color(0.25f, 0.75f, 0.3f);
+                    ParticleEffects.SpawnBurst(transform.position, burstColor, count: 12, speed: 2f, lifetime: 0.35f, size: 0.06f);
+                }
             }
             else if (Keyboard.current.rKey.wasPressedThisFrame)
             {

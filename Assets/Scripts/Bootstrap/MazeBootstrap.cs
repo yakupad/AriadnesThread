@@ -163,7 +163,7 @@ namespace AriadnesThread.Bootstrap
                 var sfxSource = atmosphereGO.AddComponent<AudioSource>();
                 var droneSource = atmosphereGO.AddComponent<AudioSource>();
                 var atmosphere = atmosphereGO.AddComponent<TensionAtmosphere>();
-                atmosphere.Initialize(_tensionDirector, cam, sfxSource, droneSource);
+                atmosphere.Initialize(_tensionDirector, cam, guard.transform, sfxSource, droneSource);
             }
 
             var levelEndGO = new GameObject("LevelEndController");

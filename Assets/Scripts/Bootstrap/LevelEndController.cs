@@ -5,6 +5,7 @@ using AriadnesThread.Core.Tension;
 using AriadnesThread.GameCenterIntegration;
 using AriadnesThread.Meta;
 using AriadnesThread.Player;
+using AriadnesThread.View;
 using UnityEngine;
 
 namespace AriadnesThread.Bootstrap
@@ -17,6 +18,9 @@ namespace AriadnesThread.Bootstrap
     [RequireComponent(typeof(AudioSource))]
     public class LevelEndController : MonoBehaviour
     {
+        private static readonly Color WinFlashColor = new Color(1f, 0.95f, 0.6f);
+        private static readonly Color CaughtFlashColor = new Color(0.6f, 0.05f, 0.05f);
+
         private MazeLevel _level;
         private GridPlayerController _player;
         private PlayerTorch _torch;
@@ -26,6 +30,9 @@ namespace AriadnesThread.Bootstrap
         private CrystalWallet _wallet;
         private LevelRewardCalculator _rewardCalculator;
         private AudioSource _audio;
+
+        private Color _flashColor;
+        private float _flashAlpha;
 
         public LevelOutcome Outcome { get; private set; } = LevelOutcome.InProgress;
         public int LastReward { get; private set; }
@@ -52,17 +59,27 @@ namespace AriadnesThread.Bootstrap
 
         private void Update()
         {
+            if (_flashAlpha > 0f)
+                _flashAlpha = Mathf.Max(0f, _flashAlpha - Time.deltaTime * 0.8f);
+
             if (Outcome != LevelOutcome.InProgress) return;
 
             if (_tensionDirector != null && _tensionDirector.State == TensionState.Caught)
             {
-                Outcome = LevelOutcome.Caught;
-                Debug.Log("Yakalandın — tekrar denemek için Space'e bas.");
+                HandleCaught();
                 return;
             }
 
             if (_player.CurrentCell.Equals(_level.Exit))
                 HandleWin();
+        }
+
+        private void HandleCaught()
+        {
+            Outcome = LevelOutcome.Caught;
+            TriggerFlash(CaughtFlashColor);
+            ParticleEffects.SpawnBurst(_player.transform.position, new Color(0.5f, 0.1f, 0.1f), count: 30, speed: 4f, lifetime: 0.5f);
+            Debug.Log("Yakalandın — tekrar denemek için Space'e bas.");
         }
 
         private void HandleWin()
@@ -77,6 +94,8 @@ namespace AriadnesThread.Bootstrap
             _wallet.Add(LastReward);
             MetaProgressionStore.SaveWallet(_wallet);
             _audio.PlayOneShot(SfxLibrary.Win);
+            TriggerFlash(WinFlashColor);
+            ParticleEffects.SpawnBurst(_player.transform.position, new Color(0.9f, 0.8f, 0.3f), count: 40, speed: 4.5f, lifetime: 0.7f);
 
             Debug.Log($"Kazandın! +{LastReward} Kristal (toplam {_wallet.Balance}). Adım: {_player.StepCount}. Space'e bas: yeni level.");
 
@@ -89,6 +108,22 @@ namespace AriadnesThread.Bootstrap
 
             if (_level.Patrol != null)
                 gameCenter.ReportAchievement(GameCenterIds.FirstGuardEvadedAchievement);
+        }
+
+        private void TriggerFlash(Color color)
+        {
+            _flashColor = color;
+            _flashAlpha = 0.6f;
+        }
+
+        private void OnGUI()
+        {
+            if (_flashAlpha <= 0f) return;
+
+            var previous = GUI.color;
+            GUI.color = new Color(_flashColor.r, _flashColor.g, _flashColor.b, _flashAlpha);
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = previous;
         }
 
         private static double FractionOf(int value, int max) => max > 0 ? (double)value / max : 1.0;
