@@ -7,7 +7,8 @@ using UnityEngine.InputSystem;
 
 namespace AriadnesThread.Player
 {
-    /// <summary>E triggers a burst reveal of nearby structure — never the guard's position.</summary>
+    /// <summary>E triggers a burst reveal of nearby structure — never the guard's position.
+    /// Keyboard-only, so CastEcho() is the same action exposed for MazeBootstrap's on-screen button.</summary>
     [RequireComponent(typeof(GridPlayerController))]
     [RequireComponent(typeof(AudioSource))]
     public class EchoCaster : MonoBehaviour
@@ -40,13 +41,15 @@ namespace AriadnesThread.Player
         private void Update()
         {
             if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
-            {
-                if (Economy.TryUse(_level.Grid, _controller.CurrentCell))
-                {
-                    _audio.PlayOneShot(SfxLibrary.EchoPing, 0.6f);
-                    ParticleEffects.SpawnBurst(transform.position, new Color(0.4f, 0.85f, 0.9f), count: 40, speed: 5f, lifetime: 0.5f, size: 0.08f);
-                }
-            }
+                CastEcho();
+        }
+
+        public void CastEcho()
+        {
+            if (!Economy.TryUse(_level.Grid, _controller.CurrentCell)) return;
+
+            _audio.PlayOneShot(SfxLibrary.EchoPing, 0.6f);
+            ParticleEffects.SpawnBurst(transform.position, new Color(0.4f, 0.85f, 0.9f), count: 40, speed: 5f, lifetime: 0.5f, size: 0.08f);
         }
     }
 }

@@ -11,8 +11,9 @@ namespace AriadnesThread.Player
     /// <summary>
     /// G places/recolors a marker at the player's current cell (only valid on a junction or
     /// dead-end — see the marker economy rules); Shift+G forces the opposite of the suggested
-    /// color; R retrieves one. Keyboard stand-ins for what would be a long-press + UI button
-    /// on device — see PlayerTorch for the same simplification.
+    /// color; R retrieves one. Keyboard-only, so a phone has no way to trigger these at all —
+    /// PlaceOrRecolorAtCurrentCell/RetrieveAtCurrentCell are the same actions exposed for
+    /// MazeBootstrap's on-screen touch buttons.
     /// </summary>
     [RequireComponent(typeof(GridPlayerController))]
     [RequireComponent(typeof(AudioSource))]
@@ -48,25 +49,36 @@ namespace AriadnesThread.Player
         {
             if (Keyboard.current == null) return;
 
-            var current = _controller.CurrentCell;
-            bool eligible = _level.Analysis.Junctions.Contains(current) || _level.Analysis.DeadEnds.Contains(current);
-
-            if (eligible && Keyboard.current.gKey.wasPressedThisFrame)
-            {
-                var suggested = SuggestColor(current);
-                var color = Keyboard.current.leftShiftKey.isPressed ? Opposite(suggested) : suggested;
-                if (Economy.TryPlaceOrRecolor(current, color))
-                {
-                    _audio.PlayOneShot(SfxLibrary.MarkerPlace, 0.6f);
-                    var burstColor = color == MarkerColor.Red ? new Color(0.8f, 0.2f, 0.2f) : new Color(0.25f, 0.75f, 0.3f);
-                    ParticleEffects.SpawnBurst(transform.position, burstColor, count: 12, speed: 2f, lifetime: 0.35f, size: 0.06f);
-                }
-            }
+            if (Keyboard.current.gKey.wasPressedThisFrame)
+                PlaceOrRecolorAtCurrentCell(forceOpposite: Keyboard.current.leftShiftKey.isPressed);
             else if (Keyboard.current.rKey.wasPressedThisFrame)
-            {
-                if (Economy.TryRetrieve(current))
-                    _audio.PlayOneShot(SfxLibrary.MarkerRetrieve, 0.6f);
-            }
+                RetrieveAtCurrentCell();
+        }
+
+        /// <summary>True (eligible cell) lets the on-screen button gray itself out when it wouldn't do anything.</summary>
+        public bool IsEligibleForMarker(out CellCoord cell)
+        {
+            cell = _controller.CurrentCell;
+            return _level.Analysis.Junctions.Contains(cell) || _level.Analysis.DeadEnds.Contains(cell);
+        }
+
+        public void PlaceOrRecolorAtCurrentCell(bool forceOpposite)
+        {
+            if (!IsEligibleForMarker(out var current)) return;
+
+            var suggested = SuggestColor(current);
+            var color = forceOpposite ? Opposite(suggested) : suggested;
+            if (!Economy.TryPlaceOrRecolor(current, color)) return;
+
+            _audio.PlayOneShot(SfxLibrary.MarkerPlace, 0.6f);
+            var burstColor = color == MarkerColor.Red ? new Color(0.8f, 0.2f, 0.2f) : new Color(0.25f, 0.75f, 0.3f);
+            ParticleEffects.SpawnBurst(transform.position, burstColor, count: 12, speed: 2f, lifetime: 0.35f, size: 0.06f);
+        }
+
+        public void RetrieveAtCurrentCell()
+        {
+            if (Economy.TryRetrieve(_controller.CurrentCell))
+                _audio.PlayOneShot(SfxLibrary.MarkerRetrieve, 0.6f);
         }
 
         // Simplification: color by whether the CURRENT cell is itself a dead end, rather than

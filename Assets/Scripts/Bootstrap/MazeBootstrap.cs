@@ -60,10 +60,13 @@ namespace AriadnesThread.Bootstrap
         {
             if (_levelEnd != null && _levelEnd.Outcome != LevelOutcome.InProgress
                 && Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
-            {
-                Destroy(_levelRoot.gameObject);
-                BuildLevel(); // same seed — see class doc
-            }
+                RetryLevel();
+        }
+
+        private void RetryLevel()
+        {
+            Destroy(_levelRoot.gameObject);
+            BuildLevel(); // same seed — see class doc
         }
 
         private void BuildLevel()
@@ -176,18 +179,72 @@ namespace AriadnesThread.Bootstrap
         {
             if (_player == null) return;
 
+            TouchUIGuard.ClearFrame();
+
+            // Default IMGUI font reads as tiny on a real phone's pixel density — scale it
+            // against screen width instead of hardcoding a point size tuned for the Simulator.
+            int fontSize = Mathf.RoundToInt(Screen.width / 45f);
+            GUI.skin.label.fontSize = fontSize;
+            GUI.skin.button.fontSize = fontSize;
+
+            DrawStatusLabel();
+            DrawActionButtons();
+
+            if (_levelEnd != null && _levelEnd.Outcome != LevelOutcome.InProgress)
+                DrawRetryButton();
+        }
+
+        private void DrawStatusLabel()
+        {
             var lines = $"Kristal: {_wallet.Balance}\n" +
                         $"Adım: {_player.StepCount}\n" +
-                        $"Meşale: {(_torch.Economy.IsLit ? "açık" : "kapalı")} ({_torch.Economy.Fuel}/{_torch.Economy.MaxFuel}) — T\n" +
-                        $"İşaret: {_markers.Economy.Stock} — G koy, Shift+G ters renk, R topla\n" +
-                        $"Yankı: {_echo.Economy.Charges} — E\n" +
+                        $"Meşale: {(_torch.Economy.IsLit ? "açık" : "kapalı")} ({_torch.Economy.Fuel}/{_torch.Economy.MaxFuel})\n" +
+                        $"İşaret: {_markers.Economy.Stock}\n" +
+                        $"Yankı: {_echo.Economy.Charges}\n" +
                         $"Anahtar: {(_player.HasKey ? "aldın" : "yok")}\n" +
-                        (_tensionDirector != null ? $"Durum: {_tensionDirector.State}\n" : "Durum: gardiyan yok\n") +
-                        (_levelEnd != null && _levelEnd.Outcome != LevelOutcome.InProgress
-                            ? $"--- {_levelEnd.Outcome} --- Space: yeni level"
-                            : "");
+                        (_tensionDirector != null ? $"Durum: {_tensionDirector.State}" : "Durum: gardiyan yok");
 
-            GUI.Label(new Rect(10, 10, 420, 160), lines);
+            GUI.Label(new Rect(10, 10, Screen.width * 0.6f, Screen.height * 0.25f), lines);
+        }
+
+        // Touch stand-ins for the T/G/Shift+G/R/E keyboard shortcuts — a phone has no
+        // keyboard, so without these the marker/torch/echo systems are unreachable on device.
+        private void DrawActionButtons()
+        {
+            float buttonHeight = Screen.height * 0.09f;
+            float buttonWidth = Screen.width / 4f;
+            float y = Screen.height - buttonHeight - 20f;
+
+            var torchRect = new Rect(0, y, buttonWidth, buttonHeight);
+            TouchUIGuard.ClaimRect(torchRect);
+            if (GUI.Button(torchRect, "Meşale"))
+                _torch.ToggleTorch();
+
+            var markerRect = new Rect(buttonWidth, y, buttonWidth, buttonHeight);
+            TouchUIGuard.ClaimRect(markerRect);
+            if (GUI.Button(markerRect, "İşaret"))
+                _markers.PlaceOrRecolorAtCurrentCell(forceOpposite: false);
+
+            var retrieveRect = new Rect(buttonWidth * 2, y, buttonWidth, buttonHeight);
+            TouchUIGuard.ClaimRect(retrieveRect);
+            if (GUI.Button(retrieveRect, "Topla"))
+                _markers.RetrieveAtCurrentCell();
+
+            var echoRect = new Rect(buttonWidth * 3, y, buttonWidth, buttonHeight);
+            TouchUIGuard.ClaimRect(echoRect);
+            if (GUI.Button(echoRect, "Yankı"))
+                _echo.CastEcho();
+        }
+
+        private void DrawRetryButton()
+        {
+            float width = Screen.width * 0.5f;
+            float height = Screen.height * 0.08f;
+            var rect = new Rect((Screen.width - width) * 0.5f, Screen.height * 0.55f, width, height);
+            TouchUIGuard.ClaimRect(rect);
+
+            if (GUI.Button(rect, $"{_levelEnd.Outcome} — Yeni Level"))
+                RetryLevel();
         }
     }
 }

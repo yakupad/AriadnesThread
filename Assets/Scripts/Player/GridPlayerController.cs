@@ -64,6 +64,12 @@ namespace AriadnesThread.Player
             else
                 return false;
 
+            // OnGUI's touch buttons and this direct Input System read see the same physical
+            // touch through two unrelated paths — without this, tapping a button also moves
+            // the player toward whatever's underneath it.
+            if (TouchUIGuard.IsPointerOverUI(screenPos))
+                return false;
+
             var cam = Camera.main;
             if (cam == null) return false;
 

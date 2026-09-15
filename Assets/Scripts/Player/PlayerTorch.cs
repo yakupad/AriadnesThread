@@ -54,8 +54,14 @@ namespace AriadnesThread.Player
             if (Economy.IsLit)
                 _light.intensity = _baseLightIntensity + Mathf.PerlinNoise(Time.time * 8f, 0f) * flickerAmount;
 
-            if (Keyboard.current == null || !Keyboard.current.tKey.wasPressedThisFrame) return;
+            // Keyboard-only — there's no physical keyboard on a phone. Kept for Editor/
+            // Simulator testing; on device this is driven by MazeBootstrap's on-screen button.
+            if (Keyboard.current != null && Keyboard.current.tKey.wasPressedThisFrame)
+                ToggleTorch();
+        }
 
+        public void ToggleTorch()
+        {
             Economy.SetLit(!Economy.IsLit);
             _audio.PlayOneShot(Economy.IsLit ? SfxLibrary.TorchOn : SfxLibrary.TorchOff, 0.5f);
             if (Economy.IsLit) _flame.Play(); else _flame.Stop();
