@@ -23,12 +23,13 @@ namespace AriadnesThread.Player
         {
             _level = level;
             Economy = new EchoEconomy(startingCharges, maxCharges, radiusHops, revealLifetimeSteps);
+            // Not in Awake(): see MarkerPlacer.Initialize for why this can't subscribe there.
+            _controller.OnStepTaken += Economy.OnStep;
         }
 
         private void Awake()
         {
             _controller = GetComponent<GridPlayerController>();
-            _controller.OnStepTaken += Economy.OnStep;
         }
 
         private void Update()

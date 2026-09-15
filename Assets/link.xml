@@ -1,0 +1,9 @@
+<linker>
+  <!-- CreatePrimitive(Capsule/Cube) adds these colliders via native code with no static C#
+       reference, so IL2CPP's managed stripping removes them from device/Simulator builds
+       (works fine in the Editor, where nothing is stripped) unless preserved here. -->
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all"/>
+    <type fullname="UnityEngine.BoxCollider" preserve="all"/>
+  </assembly>
+</linker>

@@ -28,12 +28,15 @@ namespace AriadnesThread.Player
         {
             _level = level;
             Economy = new MarkerEconomy(startingStock, maxStock, lifetimeSteps);
+            // Not in Awake(): AddComponent<T>() calls Awake() synchronously, before the
+            // caller gets a chance to invoke Initialize() — subscribing there would close
+            // over a still-null Economy and throw on the first step.
+            _controller.OnStepTaken += Economy.OnStep;
         }
 
         private void Awake()
         {
             _controller = GetComponent<GridPlayerController>();
-            _controller.OnStepTaken += Economy.OnStep;
         }
 
         private void Update()
