@@ -34,10 +34,15 @@ namespace AriadnesThread.Core.Generation
                     ? KeyLockPlacer.Place(grid, analysis, rng, parameters.MinKeyLockDistance)
                     : null;
 
+                TimedGate? timedGate = parameters.IncludeTimedGate
+                    ? TimedGatePlacer.Place(analysis, rng, parameters.TimedGateOpenSteps, parameters.TimedGateClosedSteps)
+                    : null;
+                var timedGateZone = ZoneTagger.TagTimedGateZone(grid, timedGate, parameters.TimedGateZoneRadiusHops);
+
                 if (!SolvabilityValidator.IsSolvable(grid, start, exit, keyLock))
                     continue;
 
-                return new MazeLevel(grid, start, exit, analysis, patrol, guardBuffer, deadEndClusters, keyLock, trySeed);
+                return new MazeLevel(grid, start, exit, analysis, patrol, guardBuffer, deadEndClusters, keyLock, timedGate, timedGateZone, trySeed);
             }
 
             throw new InvalidOperationException(

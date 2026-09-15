@@ -22,11 +22,26 @@ namespace AriadnesThread.Core.Generation
 
             foreach (var patrolCell in patrol.Cells)
             {
-                foreach (var reachable in CellsWithinHops(grid, patrolCell, visionRadiusHops))
+                foreach (var reachable in GridQuery.CellsWithinHops(grid, patrolCell, visionRadiusHops))
                     buffer.Add(reachable);
             }
 
             return buffer;
+        }
+
+        /// <summary>Tags cells near a timed gate — entering the area builds tension, but (per
+        /// design) a timed obstacle alone never escalates past Alert the way a guard does.</summary>
+        public static HashSet<CellCoord> TagTimedGateZone(MazeGrid grid, TimedGate? gate, int radiusHops)
+        {
+            var zone = new HashSet<CellCoord>();
+            if (gate == null) return zone;
+
+            foreach (var cell in GridQuery.CellsWithinHops(grid, gate.From, radiusHops))
+                zone.Add(cell);
+            foreach (var cell in GridQuery.CellsWithinHops(grid, gate.To, radiusHops))
+                zone.Add(cell);
+
+            return zone;
         }
 
         /// <summary>
@@ -75,26 +90,6 @@ namespace AriadnesThread.Core.Generation
             }
 
             return tagged;
-        }
-
-        private static IEnumerable<CellCoord> CellsWithinHops(MazeGrid grid, CellCoord start, int maxHops)
-        {
-            var visited = new HashSet<CellCoord> { start };
-            var frontier = new Queue<(CellCoord cell, int depth)>();
-            frontier.Enqueue((start, 0));
-
-            while (frontier.Count > 0)
-            {
-                var (cell, depth) = frontier.Dequeue();
-                yield return cell;
-                if (depth >= maxHops) continue;
-
-                foreach (var neighbor in grid.OpenNeighbors(cell))
-                {
-                    if (!visited.Add(neighbor)) continue;
-                    frontier.Enqueue((neighbor, depth + 1));
-                }
-            }
         }
     }
 }

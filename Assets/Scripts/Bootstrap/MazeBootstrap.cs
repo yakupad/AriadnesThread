@@ -8,10 +8,9 @@ using UnityEngine;
 namespace AriadnesThread.Bootstrap
 {
     /// <summary>
-    /// M3 scope: adds the guard, torch, and tension director on top of M2's generation +
-    /// render + tap-to-move. Key/lock is still off (that's M4). The on-screen HUD and the
-    /// console log in TensionDirector exist purely to feel the state machine working —
-    /// there is no real level-fail/retry flow yet (M4/M5).
+    /// M4 scope: adds markers, echo, key/lock, and a timed gate on top of M3's guard/torch/
+    /// tension loop. The HUD and console logging are still prototype-only diagnostics, not a
+    /// real UI (that's M5).
     /// </summary>
     public class MazeBootstrap : MonoBehaviour
     {
@@ -22,6 +21,8 @@ namespace AriadnesThread.Bootstrap
 
         private GridPlayerController _player;
         private PlayerTorch _torch;
+        private MarkerPlacer _markers;
+        private EchoCaster _echo;
         private TensionDirector _tensionDirector;
 
         private void Start()
@@ -31,7 +32,8 @@ namespace AriadnesThread.Bootstrap
                 Width = width,
                 Height = height,
                 IncludeGuard = true,
-                IncludeKeyLock = false,
+                IncludeKeyLock = true,
+                IncludeTimedGate = true,
             };
 
             var level = MazePipeline.Generate(seed, parameters);
@@ -45,7 +47,25 @@ namespace AriadnesThread.Bootstrap
             playerGO.transform.position = MazeView.CellToWorld(level.Start, cellSize) + Vector3.up;
             _player = playerGO.AddComponent<GridPlayerController>();
             _player.Initialize(level, cellSize);
+
             _torch = playerGO.AddComponent<PlayerTorch>();
+            _markers = playerGO.AddComponent<MarkerPlacer>();
+            _markers.Initialize(level);
+            _echo = playerGO.AddComponent<EchoCaster>();
+            _echo.Initialize(level);
+
+            var markerViewGO = new GameObject("MarkerView");
+            markerViewGO.AddComponent<MarkerView>().Initialize(_markers.Economy, cellSize);
+
+            var echoViewGO = new GameObject("EchoView");
+            echoViewGO.AddComponent<EchoView>().Initialize(_echo.Economy, view);
+
+            if (level.TimedGate != null)
+            {
+                _player.OnStepTaken += level.TimedGate.OnStep;
+                var gateViewGO = new GameObject("TimedGateView");
+                gateViewGO.AddComponent<TimedGateView>().Initialize(level.TimedGate, view.TimedGateMarker);
+            }
 
             var lightGO = new GameObject("Sun");
             var light = lightGO.AddComponent<Light>();
@@ -88,10 +108,13 @@ namespace AriadnesThread.Bootstrap
             if (_player == null) return;
 
             var lines = $"Adım: {_player.StepCount}\n" +
-                        $"Meşale: {(_torch.Economy.IsLit ? "açık" : "kapalı")} ({_torch.Economy.Fuel}/{_torch.Economy.MaxFuel}) — T'ye bas\n" +
+                        $"Meşale: {(_torch.Economy.IsLit ? "açık" : "kapalı")} ({_torch.Economy.Fuel}/{_torch.Economy.MaxFuel}) — T\n" +
+                        $"İşaret: {_markers.Economy.Stock} — G koy, Shift+G ters renk, R topla\n" +
+                        $"Yankı: {_echo.Economy.Charges} — E\n" +
+                        $"Anahtar: {(_player.HasKey ? "aldın" : "yok")}\n" +
                         (_tensionDirector != null ? $"Durum: {_tensionDirector.State}" : "Durum: gardiyan yok");
 
-            GUI.Label(new Rect(10, 10, 400, 80), lines);
+            GUI.Label(new Rect(10, 10, 420, 130), lines);
         }
     }
 }

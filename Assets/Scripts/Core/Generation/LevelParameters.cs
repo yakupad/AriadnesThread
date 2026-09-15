@@ -13,6 +13,11 @@ namespace AriadnesThread.Core.Generation
         public bool IncludeKeyLock { get; set; }
         public int MinKeyLockDistance { get; set; } = 4;
 
+        public bool IncludeTimedGate { get; set; }
+        public int TimedGateOpenSteps { get; set; } = 6;
+        public int TimedGateClosedSteps { get; set; } = 3;
+        public int TimedGateZoneRadiusHops { get; set; } = 3;
+
         public int MinDeadEndBranchDepth { get; set; } = 3;
 
         public int MaxGenerationRetries { get; set; } = 20;

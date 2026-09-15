@@ -31,7 +31,13 @@ namespace AriadnesThread.Bootstrap
 
         private void Update()
         {
-            bool withinDangerZone = _level.GuardBuffer.Contains(_player.CurrentCell);
+            var cell = _player.CurrentCell;
+            // "Wrong area" per the design doc is any of these three — a guard's territory,
+            // a deep dead-end branch, or a timed-gate's vicinity. This OR is what the
+            // "highest severity wins, every source must clear" rule needs from the caller.
+            bool withinDangerZone = _level.GuardBuffer.Contains(cell)
+                || _level.DeadEndClusters.Contains(cell)
+                || _level.TimedGateZone.Contains(cell);
             bool seenByGuard = _guard.TryGetLineOfSightToPlayer(_player.transform, out var distance);
 
             var previousState = _fsm.State;

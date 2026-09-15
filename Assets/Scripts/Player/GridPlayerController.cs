@@ -25,6 +25,9 @@ namespace AriadnesThread.Player
         public int StepCount { get; private set; }
         public CellCoord CurrentCell => _currentCell;
 
+        /// <summary>Set once the player has visited the key room. Never resets — a level attempt is one continuous run.</summary>
+        public bool HasKey { get; private set; }
+
         /// <summary>Fires once per cell crossing — the tick unit every step-based resource (torch fuel, markers) uses.</summary>
         public event System.Action OnStepTaken;
 
@@ -80,6 +83,9 @@ namespace AriadnesThread.Player
 
             for (int i = 1; i < path.Count; i++)
             {
+                if (IsEdgeBlocked(_currentCell, path[i]))
+                    break; // locked door without the key, or a timed gate currently closed
+
                 var targetWorld = MazeView.CellToWorld(path[i], _cellSize) + Vector3.up;
                 while (Vector3.Distance(transform.position, targetWorld) > 0.01f)
                 {
@@ -90,10 +96,25 @@ namespace AriadnesThread.Player
                 transform.position = targetWorld;
                 _currentCell = path[i];
                 StepCount++;
+
+                if (_level.KeyLock != null && _currentCell.Equals(_level.KeyLock.KeyRoom))
+                    HasKey = true;
+
                 OnStepTaken?.Invoke();
             }
 
             _isMoving = false;
+        }
+
+        private bool IsEdgeBlocked(CellCoord from, CellCoord to)
+        {
+            if (_level.KeyLock != null && !HasKey && _level.KeyLock.IsLockedEdge(from, to))
+                return true;
+
+            if (_level.TimedGate != null && _level.TimedGate.IsGateEdge(from, to) && !_level.TimedGate.IsOpen)
+                return true;
+
+            return false;
         }
     }
 }

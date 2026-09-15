@@ -14,6 +14,8 @@ namespace AriadnesThread.Core.Generation
         public HashSet<CellCoord> GuardBuffer { get; }
         public HashSet<CellCoord> DeadEndClusters { get; }
         public KeyLockPlacement? KeyLock { get; }
+        public TimedGate? TimedGate { get; }
+        public HashSet<CellCoord> TimedGateZone { get; }
         public int Seed { get; }
 
         public MazeLevel(
@@ -25,6 +27,8 @@ namespace AriadnesThread.Core.Generation
             HashSet<CellCoord> guardBuffer,
             HashSet<CellCoord> deadEndClusters,
             KeyLockPlacement? keyLock,
+            TimedGate? timedGate,
+            HashSet<CellCoord> timedGateZone,
             int seed)
         {
             Grid = grid;
@@ -35,6 +39,8 @@ namespace AriadnesThread.Core.Generation
             GuardBuffer = guardBuffer;
             DeadEndClusters = deadEndClusters;
             KeyLock = keyLock;
+            TimedGate = timedGate;
+            TimedGateZone = timedGateZone;
             Seed = seed;
         }
     }
