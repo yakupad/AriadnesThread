@@ -25,6 +25,9 @@ namespace AriadnesThread.Player
         public int StepCount { get; private set; }
         public CellCoord CurrentCell => _currentCell;
 
+        /// <summary>Fires once per cell crossing — the tick unit every step-based resource (torch fuel, markers) uses.</summary>
+        public event System.Action OnStepTaken;
+
         public void Initialize(MazeLevel level, float cellSize)
         {
             _level = level;
@@ -87,6 +90,7 @@ namespace AriadnesThread.Player
                 transform.position = targetWorld;
                 _currentCell = path[i];
                 StepCount++;
+                OnStepTaken?.Invoke();
             }
 
             _isMoving = false;
