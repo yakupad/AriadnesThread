@@ -171,8 +171,8 @@ PlayerSettings:
   androidMinAspectRatio: 1
   applicationIdentifier:
     Android: com.UnityTechnologies.com.unity.template.urpblank
-    Standalone: com.Unity-Technologies.com.unity.template.urp-blank
-    iPhone: com.Unity-Technologies.com.unity.template.urp-blank
+    Standalone: com.yakupad.ariadnesthread
+    iPhone: com.yakupad.ariadnesthread
   buildNumber:
     Standalone: 0
     VisionOS: 0

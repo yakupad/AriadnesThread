@@ -16,9 +16,14 @@ obj/
 .vs/
 .vscode/
 *.DS_Store
+._*
 
 # Unity regenerates these IDE project files at the repo root on every open/compile —
 # root-only patterns (leading slash, no further slash) so the hand-written ones under
 # src/ stay tracked.
 /*.csproj
 /*.slnx
+
+# Source clone used to build the Apple.GameKit/.Core .tgz packages checked into
+# LocalPackages/ — the clone itself isn't needed once those are built.
+/vendor/

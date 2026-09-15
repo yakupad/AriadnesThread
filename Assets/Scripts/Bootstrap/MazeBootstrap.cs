@@ -1,16 +1,20 @@
 using AriadnesThread.CameraControl;
 using AriadnesThread.Core.Generation;
+using AriadnesThread.Core.Meta;
+using AriadnesThread.GameCenterIntegration;
 using AriadnesThread.Guard;
+using AriadnesThread.Meta;
 using AriadnesThread.Player;
 using AriadnesThread.View;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace AriadnesThread.Bootstrap
 {
     /// <summary>
-    /// M4 scope: adds markers, echo, key/lock, and a timed gate on top of M3's guard/torch/
-    /// tension loop. The HUD and console logging are still prototype-only diagnostics, not a
-    /// real UI (that's M5).
+    /// M5 scope: Kristal/meta-progression, Game Center, and a real (if minimal) level-end
+    /// flow on top of M4's markers/echo/key-lock/timed-gate. Retry regenerates the SAME seed
+    /// with run-time resources reset — no checkpoint — per the concept doc's retry rules.
     /// </summary>
     public class MazeBootstrap : MonoBehaviour
     {
@@ -19,14 +23,43 @@ namespace AriadnesThread.Bootstrap
         [SerializeField] private int height = 12;
         [SerializeField] private float cellSize = 3f;
 
+        private Transform _levelRoot;
+        private CrystalWallet _wallet;
+        private GameCenterManager _gameCenter;
+
         private GridPlayerController _player;
         private PlayerTorch _torch;
         private MarkerPlacer _markers;
         private EchoCaster _echo;
         private TensionDirector _tensionDirector;
+        private LevelEndController _levelEnd;
 
-        private void Start()
+        private void Awake()
         {
+            _wallet = MetaProgressionStore.LoadWallet();
+
+            var gameCenterGO = new GameObject("GameCenter");
+            gameCenterGO.transform.SetParent(transform);
+            _gameCenter = gameCenterGO.AddComponent<GameCenterManager>();
+            _gameCenter.Authenticate();
+        }
+
+        private void Start() => BuildLevel();
+
+        private void Update()
+        {
+            if (_levelEnd != null && _levelEnd.Outcome != LevelOutcome.InProgress
+                && Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+            {
+                Destroy(_levelRoot.gameObject);
+                BuildLevel(); // same seed — see class doc
+            }
+        }
+
+        private void BuildLevel()
+        {
+            _levelRoot = new GameObject("LevelRoot").transform;
+
             var parameters = new LevelParameters
             {
                 Width = width,
@@ -39,11 +72,13 @@ namespace AriadnesThread.Bootstrap
             var level = MazePipeline.Generate(seed, parameters);
 
             var viewGO = new GameObject("MazeView");
+            viewGO.transform.SetParent(_levelRoot);
             var view = viewGO.AddComponent<MazeView>();
             view.Build(level, cellSize);
 
             var playerGO = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             playerGO.name = "Player";
+            playerGO.transform.SetParent(_levelRoot);
             playerGO.transform.position = MazeView.CellToWorld(level.Start, cellSize) + Vector3.up;
             _player = playerGO.AddComponent<GridPlayerController>();
             _player.Initialize(level, cellSize);
@@ -55,66 +90,82 @@ namespace AriadnesThread.Bootstrap
             _echo.Initialize(level);
 
             var markerViewGO = new GameObject("MarkerView");
+            markerViewGO.transform.SetParent(_levelRoot);
             markerViewGO.AddComponent<MarkerView>().Initialize(_markers.Economy, cellSize);
 
             var echoViewGO = new GameObject("EchoView");
+            echoViewGO.transform.SetParent(_levelRoot);
             echoViewGO.AddComponent<EchoView>().Initialize(_echo.Economy, view);
 
             if (level.TimedGate != null)
             {
                 _player.OnStepTaken += level.TimedGate.OnStep;
                 var gateViewGO = new GameObject("TimedGateView");
+                gateViewGO.transform.SetParent(_levelRoot);
                 gateViewGO.AddComponent<TimedGateView>().Initialize(level.TimedGate, view.TimedGateMarker);
             }
 
             var lightGO = new GameObject("Sun");
+            lightGO.transform.SetParent(_levelRoot);
             var light = lightGO.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 0.5f; // dim — the torch's point light should matter
+            light.intensity = 0.5f;
             lightGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
 
             var camGO = new GameObject("IsometricCamera");
+            camGO.transform.SetParent(_levelRoot);
             var cam = camGO.AddComponent<Camera>();
             cam.orthographic = true;
             cam.orthographicSize = Mathf.Max(width, height) * cellSize * 0.6f;
             camGO.tag = "MainCamera";
-            var follow = camGO.AddComponent<IsometricCameraFollow>();
-            follow.SetTarget(playerGO.transform);
+            camGO.AddComponent<IsometricCameraFollow>().SetTarget(playerGO.transform);
 
             GuardController guard = null;
             if (level.Patrol != null)
             {
                 var guardGO = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                 guardGO.name = "Guard";
+                guardGO.transform.SetParent(_levelRoot);
                 guardGO.GetComponent<Renderer>().material.color = new Color(0.7f, 0.15f, 0.15f);
                 guard = guardGO.AddComponent<GuardController>();
                 guard.Initialize(level, cellSize);
-            }
-
-            if (guard != null)
-            {
-                var directorGO = new GameObject("TensionDirector");
-                _tensionDirector = directorGO.AddComponent<TensionDirector>();
-                _tensionDirector.Initialize(level, _player, guard);
             }
             else
             {
                 Debug.LogWarning("No patrol loop could be generated for this seed/size — playing without a guard.");
             }
+
+            _tensionDirector = null;
+            if (guard != null)
+            {
+                var directorGO = new GameObject("TensionDirector");
+                directorGO.transform.SetParent(_levelRoot);
+                _tensionDirector = directorGO.AddComponent<TensionDirector>();
+                _tensionDirector.Initialize(level, _player, guard);
+            }
+
+            var levelEndGO = new GameObject("LevelEndController");
+            levelEndGO.transform.SetParent(_levelRoot);
+            _levelEnd = levelEndGO.AddComponent<LevelEndController>();
+            _levelEnd.Initialize(level, _player, _torch, _markers, _echo, _tensionDirector, _wallet);
         }
 
         private void OnGUI()
         {
             if (_player == null) return;
 
-            var lines = $"Adım: {_player.StepCount}\n" +
+            var lines = $"Kristal: {_wallet.Balance}\n" +
+                        $"Adım: {_player.StepCount}\n" +
                         $"Meşale: {(_torch.Economy.IsLit ? "açık" : "kapalı")} ({_torch.Economy.Fuel}/{_torch.Economy.MaxFuel}) — T\n" +
                         $"İşaret: {_markers.Economy.Stock} — G koy, Shift+G ters renk, R topla\n" +
                         $"Yankı: {_echo.Economy.Charges} — E\n" +
                         $"Anahtar: {(_player.HasKey ? "aldın" : "yok")}\n" +
-                        (_tensionDirector != null ? $"Durum: {_tensionDirector.State}" : "Durum: gardiyan yok");
+                        (_tensionDirector != null ? $"Durum: {_tensionDirector.State}\n" : "Durum: gardiyan yok\n") +
+                        (_levelEnd != null && _levelEnd.Outcome != LevelOutcome.InProgress
+                            ? $"--- {_levelEnd.Outcome} --- Space: yeni level"
+                            : "");
 
-            GUI.Label(new Rect(10, 10, 420, 130), lines);
+            GUI.Label(new Rect(10, 10, 420, 160), lines);
         }
     }
 }
