@@ -16,3 +16,9 @@ obj/
 .vs/
 .vscode/
 *.DS_Store
+
+# Unity regenerates these IDE project files at the repo root on every open/compile —
+# root-only patterns (leading slash, no further slash) so the hand-written ones under
+# src/ stay tracked.
+/*.csproj
+/*.slnx
